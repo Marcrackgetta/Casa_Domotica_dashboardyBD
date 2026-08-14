@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home 365 - Dashboard de Monitoreo</title>
+
+    <!-- ==========================================
+         DEPENDENCIAS EXTERNAS (AdminLTE 4 & Bootstrap 5)
+         ========================================== -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/css/adminlte.min.css">
+
+    <!-- ==========================================
+         ESTILOS PERSONALIZADOS
+         ========================================== -->
+    <style>
+        :root {
+            --sensor-red: #e74c3c;
+            --brand-bg: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+        }
+
+        body {
+            background: var(--brand-bg);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+
+        .custom-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background-color: transparent;
+            border-bottom: none;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header-logo {
+            max-width: 65px;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.06));
+        }
+        .logo-right { border-radius: 12px; }
+
+        .header-titles {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .header-titles h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .header-titles p {
+            color: #7f8c8d;
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .top-panel-card {
+            transition: all 0.4s ease-in-out;
+            min-height: 260px;
+        }
+
+        .photo-placeholder-box {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            height: 100%;
+            min-height: 260px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #95a5a6;
+            transition: all 0.4s ease-in-out;
+        }
+
+        .map-svg-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        svg {
+            width: 100%;
+            max-height: 350px;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .zoomed-expanded svg { max-height: 280px; }
+
+        .svg-group {
+            transition: opacity 0.4s ease-in-out;
+            opacity: 1;
+        }
+
+        .svg-group.hidden-room {
+            opacity: 0;
+            pointer-events: none; 
+        }
+
+        .room {
+            fill: #f8f9fa;
+            stroke: #dee2e6;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: fill 0.3s ease;
+        }
+        .room:hover { fill: #e3f2fd; }
+        .furniture { fill: #ced4da; opacity: 0.6; pointer-events: none; }
+
+        .sensor-dot {
+            fill: var(--sensor-red);
+            stroke: white;
+            stroke-width: 1.5;
+            pointer-events: none;
+            animation: pulse 6s ease-in-out infinite;
+            transform-origin: center;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 0.9; }
+        }
+
+        .sensor-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border-top: 3px solid #3498db;
+        }
+        .sensor-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+        }
+
+        .border-temp { border-top-color: #e74c3c !important; }
+        .border-hum { border-top-color: #3498db !important; }
+        .border-gas { border-top-color: #e67e22 !important; }
+        .border-water { border-top-color: #1abc9c !important; }
+        .border-security { border-top-color: #9b59b6 !important; }
+        .border-relay { border-top-color: #f1c40f !important; }
+
+        /* Ajustes visuales para interruptores de SOLO LECTURA */
+        .form-switch .form-check-input {
+            width: 2.5em;
+            height: 1.25em;
+            cursor: default !important; /* Muestra el cursor normal, no interactivo */
+        }
+        /* Mantenemos el color rojo si está encendido (incluso estando deshabilitado) */
+        .form-switch .form-check-input:checked[disabled] {
+            background-color: var(--sensor-red);
+            border-color: var(--sensor-red);
+            opacity: 0.7; /* Ligeramente opaco para indicar que no se puede tocar */
+        }
+
+        @media (max-width: 768px) {
+            .custom-header { padding: 0.8rem; }
+            .header-logo { max-width: 45px; }
+            .header-titles h1 { font-size: 1.3rem; }
+            .header-titles p { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+
+<body class="layout-top-nav">
+    <div class="app-wrapper">
+        
+        <!-- CABECERA -->
+        <header class="app-header custom-header">
+            <img src="ANAI.png" alt="Escudo ANAI" class="header-logo logo-left">
+            <div class="header-titles">
+                <h1>Smart Home 365</h1>
+                <p>Proyecto SIMA-HD | Infoshow 2026</p>
+            </div>
+            <img src="CASA.png" alt="Logo Casa Domótica" class="header-logo logo-right">
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="app-main">
+            <div class="app-content">
+                <div class="container-fluid" style="max-width: 1200px; padding-top: 10px;">
+                    
+                    <!-- Barra de Navegación Contextual y Estado de Firebase -->
+                    <div class="row mb-2 align-items-center" id="nav-status-bar">
+                        <div class="col-8 d-flex gap-2">
+                            <span id="current-zone-label" class="badge bg-light text-dark border px-3 py-2 fs-6 rounded-pill shadow-sm">
+                                <i class="fa-solid fa-house me-1 text-primary"></i> Vista General
+                            </span>
+                            <span id="firebase-status" class="badge bg-secondary px-3 py-2 fs-6 rounded-pill shadow-sm d-flex align-items-center">
+                                <i class="fa-solid fa-spinner fa-spin me-1"></i> BD Desconectada
+                            </span>
+                        </div>
+                        <div class="col-4 text-end">
+                            <button id="btn-reset" class="btn btn-sm btn-outline-secondary rounded-pill shadow-sm" style="display: none;">
+                                <i class="fa-solid fa-arrow-left me-1"></i> Volver
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN SUPERIOR: FOTO Y MAPA -->
+                    <div class="row" id="top-panels-row">
+                        <div class="col-md-6 mb-3" id="photo-col">
+                            <div class="card shadow-sm border-0 rounded-4 top-panel-card">
+                                <div class="card-body p-2">
+                                    <div class="photo-placeholder-box">
+                                        <i class="fa-solid fa-camera fa-2x mb-2 text-secondary opacity-50"></i>
+                                        <span class="fw-bold fs-6">Proyecto Físico</span>
+                                        <small class="text-muted" style="font-size: 0.75rem;">(Espacio reservado para fotografía)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="map-col">
+                            <div class="card shadow-sm border-0 rounded-4 top-panel-card" id="map-card-wrapper">
+                                <div class="card-body p-2 map-svg-container">
+                                    <svg id="house-map" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+                                        <g id="group-sala" class="svg-group" onclick="zoomTo('sala', '0 0 200 300', 'Sala Principal')">
+                                            <polygon points="0,0 200,0 200,150 100,150 100,300 0,300" class="room" id="path-sala"/>
+                                            <rect x="20" y="50" width="40" height="80" class="furniture" rx="5" /> 
+                                            <circle cx="100" cy="50" r="4" class="sensor-dot" /> 
+                                            <circle cx="50" cy="200" r="4" class="sensor-dot" /> 
+                                        </g>
+                                        <g id="group-cocina" class="svg-group" onclick="zoomTo('cocina', '100 0 300 300', 'Cocina')">
+                                            <polygon points="200,0 400,0 400,300 100,300 100,150 200,150" class="room" id="path-cocina"/>
+                                            <rect x="250" y="20" width="120" height="40" class="furniture" /> 
+                                            <circle cx="300" cy="150" r="30" class="furniture" /> 
+                                            <circle cx="300" cy="50" r="4" class="sensor-dot" /> 
+                                            <circle cx="150" cy="250" r="4" class="sensor-dot" /> 
+                                        </g>
+                                        <g id="group-lines" class="svg-group">
+                                            <polyline points="200,0 200,150 100,150 100,300" fill="none" stroke="#dee2e6" stroke-width="3" />
+                                        </g>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TÍTULO DE SECCIÓN SENSORES -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-uppercase text-muted fw-bold mb-0" style="font-size: 0.8rem; letter-spacing: 1px;">
+                            <i class="fa-solid fa-microchip me-1"></i> Dispositivos y Monitoreo
+                        </h6>
+                        <span id="sensor-count-badge" class="badge bg-secondary rounded-pill"></span>
+                    </div>
+
+                    <!-- CONTENEDOR DE TARJETAS DE SENSORES -->
+                    <div class="row g-3" id="sensor-container">
+                        <!-- Generación dinámica -->
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPTS DE UI -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/js/adminlte.min.js"></script>
+
+    <!-- SCRIPT DE LÓGICA MÓDULO -->
+    <script type="module">
+        // 1. IMPORTAR ÚNICAMENTE LA FUNCIÓN DE LECTURA DE FIREBASE
+        // Eliminamos "actualizarActuador" porque el dashboard ya no escribirá comandos
+        import { escucharSensores } from './firebase.js';
+
+        // 2. DATOS DE MEMORIA (Se actualizarán con Firebase)
+        const mockData = [
+            { id: 'dht_temp_sala', room: 'sala', name: 'Temperatura', value: 24.8, unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
+            { id: 'dht_hum_sala', room: 'sala', name: 'Humedad', value: 62, unit: '%', type: 'gauge', max: 100, icon: 'fa-droplet', borderClass: 'border-hum' },
+            { id: 'touch_sala', room: 'sala', name: 'Pulsador', value: false, type: 'status', textTrue: 'Presionado', textFalse: 'Reposo', icon: 'fa-fingerprint', borderClass: 'border-security' },
+            { id: 'rele_luz_sala', room: 'sala', name: 'Luces', value: true, type: 'control', textTrue: 'Encendido', textFalse: 'Apagado', icon: 'fa-lightbulb', borderClass: 'border-relay' },
+            
+            { id: 'mq_humo_cocina', room: 'cocina', name: 'Gas y Humo', value: false, type: 'alert', textTrue: '¡GAS DETECTADO!', textFalse: 'Normal', icon: 'fa-triangle-exclamation', borderClass: 'border-gas' },
+            { id: 'mh_agua_cocina', room: 'cocina', name: 'Fuga de Agua', value: false, type: 'alert', textTrue: '¡FUGA DETECTADA!', textFalse: 'Seco', icon: 'fa-faucet-drip', borderClass: 'border-water' },
+            { id: 'dht_temp_cocina', room: 'cocina', name: 'Temperatura', value: 28.2, unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
+            { id: 'buzzer_alarma', room: 'cocina', name: 'Alarma', value: false, type: 'control', textTrue: 'Activa', textFalse: 'Apagada', icon: 'fa-bell', borderClass: 'border-security' }
+        ];
+
+        // Referencias DOM
+        const mapSvg = document.getElementById('house-map');
+        const container = document.getElementById('sensor-container');
+        const btnReset = document.getElementById('btn-reset');
+        const currentZoneLabel = document.getElementById('current-zone-label');
+        const sensorCountBadge = document.getElementById('sensor-count-badge');
+        const firebaseStatusBadge = document.getElementById('firebase-status');
+        
+        const photoCol = document.getElementById('photo-col');
+        const mapCol = document.getElementById('map-col');
+        const mapCardWrapper = document.getElementById('map-card-wrapper');
+        const allSvgGroups = document.querySelectorAll('.svg-group');
+
+        let currentFilter = 'all';
+
+        // 3. LÓGICA DE ZOOM
+        window.zoomTo = function(roomName, viewBoxCoords, roomDisplayName) {
+            currentFilter = roomName;
+            mapSvg.setAttribute('viewBox', viewBoxCoords);
+            
+            allSvgGroups.forEach(group => {
+                if(group.id === `group-${roomName}`) group.classList.remove('hidden-room');
+                else group.classList.add('hidden-room');
+            });
+
+            photoCol.classList.add('d-none');
+            mapCol.classList.remove('col-md-6');
+            mapCol.classList.add('col-md-12');
+            mapCardWrapper.classList.add('zoomed-expanded'); 
+            
+            btnReset.style.display = 'inline-block';
+            currentZoneLabel.innerHTML = `<i class="fa-solid fa-location-dot me-1 text-danger"></i> Zona: ${roomDisplayName}`;
+            renderSensors(currentFilter);
+        }
+
+        btnReset.addEventListener('click', () => {
+            currentFilter = 'all';
+            mapSvg.setAttribute('viewBox', '0 0 400 300');
+            allSvgGroups.forEach(group => group.classList.remove('hidden-room'));
+            
+            photoCol.classList.remove('d-none');
+            mapCol.classList.remove('col-md-12');
+            mapCol.classList.add('col-md-6');
+            mapCardWrapper.classList.remove('zoomed-expanded');
+            
+            btnReset.style.display = 'none';
+            currentZoneLabel.innerHTML = `<i class="fa-solid fa-house me-1 text-primary"></i> Vista General`;
+            renderSensors(currentFilter);
+        });
+
+        // 4. RENDERIZADO Y CONSTRUCCIÓN DE TARJETAS
+        function renderSensors(filterRoom) {
+            container.innerHTML = ''; 
+            const filteredData = filterRoom === 'all' ? mockData : mockData.filter(sensor => sensor.room === filterRoom);
+            sensorCountBadge.textContent = `${filteredData.length} dispositivos`;
+
+            filteredData.forEach(sensor => {
+                const col = document.createElement('div');
+                col.className = 'col-6 col-md-4 col-lg-3';
+                let bodyContent = '';
+
+                // A: Medidores Visuales
+                if (sensor.type === 'gauge') {
+                    const percentage = Math.min((sensor.value / sensor.max) * 100, 100);
+                    const barColor = percentage > 70 ? 'bg-danger' : 'bg-primary';
+                    bodyContent = `
+                        <div class="d-flex align-items-baseline justify-content-between mb-1">
+                            <span class="fs-4 fw-bold">${sensor.value}</span>
+                            <span class="text-muted small">${sensor.unit}</span>
+                        </div>
+                        <div class="progress progress-xs rounded-pill" style="height: 6px;">
+                            <div class="progress-bar ${barColor}" style="width: ${percentage}%"></div>
+                        </div>
+                    `;
+                } 
+                // B: Alertas y Estados Estáticos
+                else if (sensor.type === 'alert' || sensor.type === 'status') {
+                    const isActive = sensor.value === true;
+                    let badgeClass = '';
+                    if (sensor.type === 'alert') badgeClass = isActive ? 'bg-danger text-white' : 'bg-success-subtle text-success border border-success-subtle';
+                    else badgeClass = isActive ? 'bg-primary text-white' : 'bg-light text-muted border';
+                    
+                    const text = isActive ? sensor.textTrue : sensor.textFalse;
+                    bodyContent = `<div class="mt-2"><span class="badge ${badgeClass} w-100 py-2 rounded-3">${text}</span></div>`;
+                } 
+                // C: Controles de Solo Lectura (Añadimos el atributo "disabled")
+                else if (sensor.type === 'control') {
+                    const isChecked = sensor.value ? 'checked' : '';
+                    const text = sensor.value ? sensor.textTrue : sensor.textFalse;
+                    bodyContent = `
+                        <div class="mt-2 form-check form-switch fs-5 d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" role="switch" id="switch_${sensor.id}" disabled ${isChecked}>
+                            <label class="form-check-label fs-6 text-muted ms-2 mt-1" for="switch_${sensor.id}">${text}</label>
+                        </div>
+                    `;
+                }
+
+                col.innerHTML = `
+                    <div class="card shadow-sm border-0 rounded-4 sensor-card ${sensor.borderClass} h-100">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="text-muted fw-bold text-truncate" style="font-size: 0.75rem;">${sensor.name}</span>
+                                <i class="fa-solid ${sensor.icon} text-secondary opacity-50 ms-1"></i>
+                            </div>
+                            ${bodyContent}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        // 5. RECEPCIÓN DE DATOS EN TIEMPO REAL DESDE FIREBASE
+        escucharSensores((datosRecibidos) => {
+            if (datosRecibidos) {
+                firebaseStatusBadge.classList.replace('bg-secondary', 'bg-success');
+                firebaseStatusBadge.innerHTML = '<i class="fa-solid fa-wifi me-1"></i> BD Conectada';
+
+                mockData.forEach(sensor => {
+                    if (datosRecibidos[sensor.id] !== undefined) {
+                        if(typeof datosRecibidos[sensor.id] === 'object' && 'valor' in datosRecibidos[sensor.id]) {
+                             sensor.value = datosRecibidos[sensor.id].valor;
+                        } else {
+                             sensor.value = datosRecibidos[sensor.id];
+                        }
+                    }
+                });
+
+                renderSensors(currentFilter);
+            }
+        });
+
+        // 6. INICIALIZACIÓN
+        renderSensors(currentFilter);
+    </script>
+</body>
+</html>
