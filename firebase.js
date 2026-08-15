@@ -44,3 +44,12 @@ export function actualizarActuador(idActuador, valor) {
         .then(() => console.log(`Comando enviado a BD: ${idActuador} -> ${valor}`))
         .catch((error) => console.error("Error al enviar comando:", error));
 }
+
+
+export function monitorearConexion(callback) {
+    const connectedRef = ref(database, '.info/connected');
+    onValue(connectedRef, (snap) => {
+        const estaConectado = snap.val() === true;
+        callback(estaConectado);
+    });
+}

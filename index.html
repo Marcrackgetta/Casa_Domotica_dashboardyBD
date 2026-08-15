@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Home 365 - Dashboard de Monitoreo</title>
+    <title>Smart Home 365 - Centro de Control</title>
 
-    <!-- ==========================================
-         DEPENDENCIAS EXTERNAS (AdminLTE 4 & Bootstrap 5)
-         ========================================== -->
+    <!-- Dependencias Externas -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/css/adminlte.min.css">
 
-    <!-- ==========================================
-         ESTILOS PERSONALIZADOS
-         ========================================== -->
+    <!-- Estilos de Producción -->
     <style>
         :root {
             --sensor-red: #e74c3c;
@@ -151,17 +147,15 @@
         .border-security { border-top-color: #9b59b6 !important; }
         .border-relay { border-top-color: #f1c40f !important; }
 
-        /* Ajustes visuales para interruptores de SOLO LECTURA */
         .form-switch .form-check-input {
             width: 2.5em;
             height: 1.25em;
-            cursor: default !important; /* Muestra el cursor normal, no interactivo */
+            cursor: default !important; 
         }
-        /* Mantenemos el color rojo si está encendido (incluso estando deshabilitado) */
         .form-switch .form-check-input:checked[disabled] {
             background-color: var(--sensor-red);
             border-color: var(--sensor-red);
-            opacity: 0.7; /* Ligeramente opaco para indicar que no se puede tocar */
+            opacity: 0.7; 
         }
 
         @media (max-width: 768px) {
@@ -176,7 +170,6 @@
 <body class="layout-top-nav">
     <div class="app-wrapper">
         
-        <!-- CABECERA -->
         <header class="app-header custom-header">
             <img src="ANAI.png" alt="Escudo ANAI" class="header-logo logo-left">
             <div class="header-titles">
@@ -186,19 +179,19 @@
             <img src="CASA.png" alt="Logo Casa Domótica" class="header-logo logo-right">
         </header>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <main class="app-main">
             <div class="app-content">
                 <div class="container-fluid" style="max-width: 1200px; padding-top: 10px;">
                     
-                    <!-- Barra de Navegación Contextual y Estado de Firebase -->
+                    <!-- Barra de Navegación Contextual y Alerta de Producción -->
                     <div class="row mb-2 align-items-center" id="nav-status-bar">
                         <div class="col-8 d-flex gap-2">
                             <span id="current-zone-label" class="badge bg-light text-dark border px-3 py-2 fs-6 rounded-pill shadow-sm">
                                 <i class="fa-solid fa-house me-1 text-primary"></i> Vista General
                             </span>
-                            <span id="firebase-status" class="badge bg-secondary px-3 py-2 fs-6 rounded-pill shadow-sm d-flex align-items-center">
-                                <i class="fa-solid fa-spinner fa-spin me-1"></i> BD Desconectada
+                            <!-- ALERTA DE PRODUCCIÓN: Oculta por defecto. Solo aparece si se cae el internet o Firebase -->
+                            <span id="connection-error-badge" class="badge bg-danger px-3 py-2 fs-6 rounded-pill shadow-sm align-items-center d-none">
+                                <i class="fa-solid fa-triangle-exclamation me-1"></i> Sin conexión al servidor
                             </span>
                         </div>
                         <div class="col-4 text-end">
@@ -208,7 +201,6 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN SUPERIOR: FOTO Y MAPA -->
                     <div class="row" id="top-panels-row">
                         <div class="col-md-6 mb-3" id="photo-col">
                             <div class="card shadow-sm border-0 rounded-4 top-panel-card">
@@ -248,7 +240,6 @@
                         </div>
                     </div>
 
-                    <!-- TÍTULO DE SECCIÓN SENSORES -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="text-uppercase text-muted fw-bold mb-0" style="font-size: 0.8rem; letter-spacing: 1px;">
                             <i class="fa-solid fa-microchip me-1"></i> Dispositivos y Monitoreo
@@ -256,7 +247,6 @@
                         <span id="sensor-count-badge" class="badge bg-secondary rounded-pill"></span>
                     </div>
 
-                    <!-- CONTENEDOR DE TARJETAS DE SENSORES -->
                     <div class="row g-3" id="sensor-container">
                         <!-- Generación dinámica -->
                     </div>
@@ -266,27 +256,26 @@
         </main>
     </div>
 
-    <!-- SCRIPTS DE UI -->
+    <!-- Scripts de Interfaz -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@4.0.0-alpha2/dist/js/adminlte.min.js"></script>
 
-    <!-- SCRIPT DE LÓGICA MÓDULO -->
+    <!-- Módulo Lógico de Producción -->
     <script type="module">
-        // 1. IMPORTAR ÚNICAMENTE LA FUNCIÓN DE LECTURA DE FIREBASE
-        // Eliminamos "actualizarActuador" porque el dashboard ya no escribirá comandos
-        import { escucharSensores } from './firebase.js';
+        import { escucharSensores, monitorearConexion } from './firebase.js';
 
-        // 2. DATOS DE MEMORIA (Se actualizarán con Firebase)
+        // DATOS INICIALES NEUTROS (Estado de Carga)
+        // Ya no engañamos al usuario con "24.8°C". Iniciamos en "--" o false.
         const mockData = [
-            { id: 'dht_temp_sala', room: 'sala', name: 'Temperatura', value: 24.8, unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
-            { id: 'dht_hum_sala', room: 'sala', name: 'Humedad', value: 62, unit: '%', type: 'gauge', max: 100, icon: 'fa-droplet', borderClass: 'border-hum' },
-            { id: 'touch_sala', room: 'sala', name: 'Pulsador', value: false, type: 'status', textTrue: 'Presionado', textFalse: 'Reposo', icon: 'fa-fingerprint', borderClass: 'border-security' },
-            { id: 'rele_luz_sala', room: 'sala', name: 'Luces', value: true, type: 'control', textTrue: 'Encendido', textFalse: 'Apagado', icon: 'fa-lightbulb', borderClass: 'border-relay' },
+            { id: 'dht_temp_sala', room: 'sala', name: 'Temperatura', value: '--', unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
+            { id: 'dht_hum_sala', room: 'sala', name: 'Humedad', value: '--', unit: '%', type: 'gauge', max: 100, icon: 'fa-droplet', borderClass: 'border-hum' },
+            { id: 'touch_sala', room: 'sala', name: 'Pulsador', value: false, type: 'status', textTrue: 'Presionado', textFalse: 'Esperando datos', icon: 'fa-fingerprint', borderClass: 'border-security' },
+            { id: 'rele_luz_sala', room: 'sala', name: 'Luces', value: false, type: 'control', textTrue: 'Encendido', textFalse: 'Desconectado', icon: 'fa-lightbulb', borderClass: 'border-relay' },
             
-            { id: 'mq_humo_cocina', room: 'cocina', name: 'Gas y Humo', value: false, type: 'alert', textTrue: '¡GAS DETECTADO!', textFalse: 'Normal', icon: 'fa-triangle-exclamation', borderClass: 'border-gas' },
-            { id: 'mh_agua_cocina', room: 'cocina', name: 'Fuga de Agua', value: false, type: 'alert', textTrue: '¡FUGA DETECTADA!', textFalse: 'Seco', icon: 'fa-faucet-drip', borderClass: 'border-water' },
-            { id: 'dht_temp_cocina', room: 'cocina', name: 'Temperatura', value: 28.2, unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
-            { id: 'buzzer_alarma', room: 'cocina', name: 'Alarma', value: false, type: 'control', textTrue: 'Activa', textFalse: 'Apagada', icon: 'fa-bell', borderClass: 'border-security' }
+            { id: 'mq_humo_cocina', room: 'cocina', name: 'Gas y Humo', value: false, type: 'alert', textTrue: '¡GAS DETECTADO!', textFalse: 'Esperando datos', icon: 'fa-triangle-exclamation', borderClass: 'border-gas' },
+            { id: 'mh_agua_cocina', room: 'cocina', name: 'Fuga de Agua', value: false, type: 'alert', textTrue: '¡FUGA DETECTADA!', textFalse: 'Esperando datos', icon: 'fa-faucet-drip', borderClass: 'border-water' },
+            { id: 'dht_temp_cocina', room: 'cocina', name: 'Temperatura', value: '--', unit: '°C', type: 'gauge', max: 50, icon: 'fa-temperature-half', borderClass: 'border-temp' },
+            { id: 'buzzer_alarma', room: 'cocina', name: 'Alarma', value: false, type: 'control', textTrue: 'Activa', textFalse: 'Desconectado', icon: 'fa-bell', borderClass: 'border-security' }
         ];
 
         // Referencias DOM
@@ -295,7 +284,7 @@
         const btnReset = document.getElementById('btn-reset');
         const currentZoneLabel = document.getElementById('current-zone-label');
         const sensorCountBadge = document.getElementById('sensor-count-badge');
-        const firebaseStatusBadge = document.getElementById('firebase-status');
+        const connectionErrorBadge = document.getElementById('connection-error-badge');
         
         const photoCol = document.getElementById('photo-col');
         const mapCol = document.getElementById('map-col');
@@ -304,7 +293,7 @@
 
         let currentFilter = 'all';
 
-        // 3. LÓGICA DE ZOOM
+        // LÓGICA DE ZOOM Y NAVEGACIÓN
         window.zoomTo = function(roomName, viewBoxCoords, roomDisplayName) {
             currentFilter = roomName;
             mapSvg.setAttribute('viewBox', viewBoxCoords);
@@ -339,42 +328,44 @@
             renderSensors(currentFilter);
         });
 
-        // 4. RENDERIZADO Y CONSTRUCCIÓN DE TARJETAS
+        // RENDERIZADO DE PRODUCCIÓN
         function renderSensors(filterRoom) {
             container.innerHTML = ''; 
             const filteredData = filterRoom === 'all' ? mockData : mockData.filter(sensor => sensor.room === filterRoom);
-            sensorCountBadge.textContent = `${filteredData.length} dispositivos`;
+            sensorCountBadge.textContent = `${filteredData.length} sensores`;
 
             filteredData.forEach(sensor => {
                 const col = document.createElement('div');
                 col.className = 'col-6 col-md-4 col-lg-3';
                 let bodyContent = '';
 
-                // A: Medidores Visuales
                 if (sensor.type === 'gauge') {
-                    const percentage = Math.min((sensor.value / sensor.max) * 100, 100);
+                    // Si el valor es '--', la barra de progreso asume 0%
+                    let percentage = 0;
+                    if (sensor.value !== '--') {
+                        percentage = Math.min((sensor.value / sensor.max) * 100, 100);
+                    }
                     const barColor = percentage > 70 ? 'bg-danger' : 'bg-primary';
+                    
                     bodyContent = `
                         <div class="d-flex align-items-baseline justify-content-between mb-1">
                             <span class="fs-4 fw-bold">${sensor.value}</span>
                             <span class="text-muted small">${sensor.unit}</span>
                         </div>
-                        <div class="progress progress-xs rounded-pill" style="height: 6px;">
+                        <div class="progress progress-xs rounded-pill" style="height: 6px; background-color: #ecf0f1;">
                             <div class="progress-bar ${barColor}" style="width: ${percentage}%"></div>
                         </div>
                     `;
                 } 
-                // B: Alertas y Estados Estáticos
                 else if (sensor.type === 'alert' || sensor.type === 'status') {
                     const isActive = sensor.value === true;
                     let badgeClass = '';
-                    if (sensor.type === 'alert') badgeClass = isActive ? 'bg-danger text-white' : 'bg-success-subtle text-success border border-success-subtle';
+                    if (sensor.type === 'alert') badgeClass = isActive ? 'bg-danger text-white' : 'bg-light text-muted border';
                     else badgeClass = isActive ? 'bg-primary text-white' : 'bg-light text-muted border';
                     
                     const text = isActive ? sensor.textTrue : sensor.textFalse;
                     bodyContent = `<div class="mt-2"><span class="badge ${badgeClass} w-100 py-2 rounded-3">${text}</span></div>`;
                 } 
-                // C: Controles de Solo Lectura (Añadimos el atributo "disabled")
                 else if (sensor.type === 'control') {
                     const isChecked = sensor.value ? 'checked' : '';
                     const text = sensor.value ? sensor.textTrue : sensor.textFalse;
@@ -401,12 +392,19 @@
             });
         }
 
-        // 5. RECEPCIÓN DE DATOS EN TIEMPO REAL DESDE FIREBASE
+        // LÓGICA DE PRODUCCIÓN: MONITOREO Y RECEPCIÓN
+        // 1. Controlar el estado de red de Firebase (Funcionalidad crítica)
+        monitorearConexion((estaConectado) => {
+            if (estaConectado) {
+                connectionErrorBadge.classList.replace('d-flex', 'd-none'); // Ocultar error
+            } else {
+                connectionErrorBadge.classList.replace('d-none', 'd-flex'); // Mostrar error crítico
+            }
+        });
+
+        // 2. Escuchar sensores sin mensajes de depuración
         escucharSensores((datosRecibidos) => {
             if (datosRecibidos) {
-                firebaseStatusBadge.classList.replace('bg-secondary', 'bg-success');
-                firebaseStatusBadge.innerHTML = '<i class="fa-solid fa-wifi me-1"></i> BD Conectada';
-
                 mockData.forEach(sensor => {
                     if (datosRecibidos[sensor.id] !== undefined) {
                         if(typeof datosRecibidos[sensor.id] === 'object' && 'valor' in datosRecibidos[sensor.id]) {
@@ -416,12 +414,11 @@
                         }
                     }
                 });
-
                 renderSensors(currentFilter);
             }
         });
 
-        // 6. INICIALIZACIÓN
+        // Inicializar interfaz neutral
         renderSensors(currentFilter);
     </script>
 </body>
