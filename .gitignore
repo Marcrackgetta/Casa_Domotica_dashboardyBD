@@ -1,0 +1,16 @@
+# ==========================================
+# REGLAS PARA IGNORAR ARCHIVOS EN GIT
+# ==========================================
+
+# Caché y archivos temporales de Firebase
+.firebase/
+
+# Archivos de depuración y logs de Firebase (por si ocurren errores locales)
+firebase-debug.log*
+
+# Dependencias locales de Node.js (por si a futuro usamos npm)
+node_modules/
+
+# Archivos ocultos del sistema operativo (Evita subir basura de Windows/Mac)
+.DS_Store
+Thumbs.db
